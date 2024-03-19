@@ -1,0 +1,120 @@
+---
+title: "Exercise_2_DataAnalysis"
+author: "Ulin"
+date: "`r Sys.Date()`"
+documentclass: ctexart
+geometry: "left=2.5cm,right=2cm,top=3cm,bottom=2.5cm"
+output:
+  rticles::ctex:
+    fig_caption: yes
+    number_sections: yes
+    toc: yes
+classoption: "hyperref,"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 数据预处理
+
+## 包导入
+
+```{r}
+library(nycflights13)
+library(dplyr)
+```
+
+## 数据导入
+
+```{r}
+flights <- nycflights13::flights
+summary(flights)
+head(flights)
+```
+
+查看flights数据集的数据，共有19个维度的数据项。
+
+# Problem 1: Origin~Dest
+
+问题描述：统计一下，共有多少个不同的往返地组合，并将这些往返地组合抽取出来，构造成一个名为Ori.Dest的新数据集。
+
+## 数据处理
+```{r}
+# 使用管道命名符操作
+flights %>%
+  select('origin','dest') %>% # 选取变量
+  distinct() -> Ori.Dest # 去除重复组合
+print(dim(Ori.Dest)[1]) # 输出结果
+```
+```{r}
+head(Ori.Dest,20)
+```
+
+## 结果
+问题1，共有224种不同的往返地组合
+
+# Problem 2: Longitude & Latitude
+
+问题描述：请将flights数据集进行扩充，增加4列，这4列分别是Ori.Lat, Ori.Lon,Dest.Lat,Dest.Lon，分别表示这起飞地的经纬度和到达地的经纬度。
+
+## 数据查看
+```{r}
+airports <- nycflights13::airports # 导入airports数据集
+summary(airports) # 查看数据
+head(airports) # 查看数据示例
+```
+根据搜索，FAA代码即由美国联邦航空管理局指定的位置代码。经检查，’faa‘列能够与flights数据集的‘origin’列和‘dest’列匹配。
+
+## 数据处理
+```{r}
+# 进行连接
+airports %>%
+  select('faa','lat','lon') %>%
+  merge(flights,.,all.x='TRUE',by.x = 'origin', by.y = 'faa') %>%
+  rename('Ori.Lat'= 'lat', 'Ori.Lon'='lon') -> flights
+
+airports %>%
+  select('faa','lat','lon') %>%
+  merge(flights,.,all.x='TRUE',by.x = 'dest', by.y = 'faa') %>%
+  rename('Dest.Lat'= 'lat', 'Dest.Lon'='lon') -> flights
+
+head(flights) 
+```
+
+## 结果展示
+```{r}
+print(names(flights))
+```
+已成功添加了出发地和目的地的经纬度
+
+# Problem 3: Define Function_CalcualteDistance
+
+问题描述：构造一个函数，这个函数可以传递4个参数，也就是上题的那四个参数，然后根据这4个参数，计算出起飞地点和到达地点之间的距离。函数名为Calculate_Distance。
+
+## 函数定义
+```{r}
+Calculate_Distance <- function(Ori.lat, Ori.lon, Des.lat, Des.lon){
+  x = Des.lon-Ori.lon # 经度差
+  y = Des.lat-Ori.lat # 维度差
+  distance <- sqrt((x^2) + (y^2)) # 根据目的地和出发地的欧氏距离计算
+  return(distance)
+}
+```
+
+# Problem 4: Call Function_CalcualteDistance
+
+问题描述：利用上述函数，为flights增加一列，此列名为Cal.Distance，这一新的变量是根据上述函数计算出的起飞地和到达地之间的距离。
+
+## 函数调用
+```{r}
+distance_cal <- Calculate_Distance(flights$Ori.Lat, flights$Ori.Lon, flights$Dest.Lat, flights$Dest.Lon)
+flights <- mutate(flights, Cal.Distance=distance_cal)
+head(flights)
+```
+# 导出数据
+```{r}
+write.csv(flights, "G:/NJU_Study/2024_Summer/DataScienceAndDataAnalysis/Exercise/02/flights.csv")
+print("导出成功")
+```
+
